@@ -49,17 +49,17 @@
     <div class="chat__header"><span class="dot"></span> Dashboard Assistant (test)</div>
     <div class="chat__log" id="log"></div>
     <div class="typing" id="typing"></div>
-    <form class="chat__form" id="form" autocomplete="off">
+    <div class="chat__form">
       <input class="chat__input" id="input" placeholder="Ask me something..." />
-      <button class="chat__send" type="submit">Send</button>
-    </form>
+      <button class="chat__send" type="button" id="send">Send</button>
+    </div>
   </div>
 
 <script>
   // ---- Simple rule-based test bot. Replace getReply() with a real API call later. ----
   const log = document.getElementById("log");
   const typing = document.getElementById("typing");
-  const form = document.getElementById("form");
+  const sendBtn = document.getElementById("send");
   const input = document.getElementById("input");
 
   function addMsg(text, who) {
@@ -90,14 +90,21 @@
     }, 500);
   }
 
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
+  function send() {
     const text = input.value.trim();
     if (!text) return;
     addMsg(text, "user");
     input.value = "";
+    input.focus();
     botRespond(text);
+  }
+
+  sendBtn.addEventListener("click", send);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); send(); }
   });
+  // make sure the first click into the visual focuses the input
+  input.addEventListener("click", () => input.focus());
 
   // greeting
   addMsg("Hi! I'm a test chatbot. Type 'help' to see what I can do.", "bot");
