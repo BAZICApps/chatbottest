@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Test Chatbot</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%;
+    font-family: "Segoe UI", system-ui, Arial, sans-serif;
+    background: #f4f6fa;
+  }
+  .chat {
+    display: flex; flex-direction: column;
+    height: 100vh; max-width: 100%;
+    background: #fff;
+  }
+  .chat__header {
+    background: #1f6feb; color: #fff;
+    padding: 12px 16px; font-weight: 600; font-size: 15px;
+    display: flex; align-items: center; gap: 8px; flex: 0 0 auto;
+  }
+  .chat__header .dot { width: 9px; height: 9px; border-radius: 50%; background: #3fd07a; }
+  .chat__log {
+    flex: 1 1 auto; overflow-y: auto;
+    padding: 14px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .msg { max-width: 78%; padding: 9px 12px; border-radius: 14px; font-size: 14px; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; }
+  .msg--bot  { background: #eef1f6; color: #1c2330; align-self: flex-start; border-bottom-left-radius: 4px; }
+  .msg--user { background: #1f6feb; color: #fff;   align-self: flex-end;   border-bottom-right-radius: 4px; }
+  .chat__form {
+    display: flex; gap: 8px; padding: 10px; border-top: 1px solid #e3e7ee; flex: 0 0 auto;
+  }
+  .chat__input {
+    flex: 1; padding: 10px 12px; border: 1px solid #cbd2dd; border-radius: 10px; font-size: 14px; outline: none;
+  }
+  .chat__input:focus { border-color: #1f6feb; }
+  .chat__send {
+    border: none; background: #1f6feb; color: #fff; border-radius: 10px;
+    padding: 0 16px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .chat__send:hover { background: #1858c0; }
+  .typing { font-size: 12px; color: #8a93a3; padding: 0 14px 6px; height: 16px; }
+</style>
+</head>
+<body>
+  <div class="chat">
+    <div class="chat__header"><span class="dot"></span> Dashboard Assistant (test)</div>
+    <div class="chat__log" id="log"></div>
+    <div class="typing" id="typing"></div>
+    <form class="chat__form" id="form" autocomplete="off">
+      <input class="chat__input" id="input" placeholder="Ask me something..." />
+      <button class="chat__send" type="submit">Send</button>
+    </form>
+  </div>
+
+<script>
+  // ---- Simple rule-based test bot. Replace getReply() with a real API call later. ----
+  const log = document.getElementById("log");
+  const typing = document.getElementById("typing");
+  const form = document.getElementById("form");
+  const input = document.getElementById("input");
+
+  function addMsg(text, who) {
+    const el = document.createElement("div");
+    el.className = "msg msg--" + who;
+    el.textContent = text;
+    log.appendChild(el);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  // Canned, keyword-based responses for testing only.
+  function getReply(text) {
+    const t = text.toLowerCase();
+    if (/\b(hi|hello|hey)\b/.test(t))      return "Hi! I'm a test bot embedded in your Power BI dashboard. Ask me about sales, help, or who I am.";
+    if (t.includes("sales"))               return "In the test version I don't read live data yet — but this is where a real answer about your sales numbers would appear.";
+    if (t.includes("help"))                return "Try: 'hello', 'what can you do', 'sales', or just type anything to see me echo a reply.";
+    if (t.includes("what can you do"))      return "I'm a placeholder chatbot proving the embed works. Later you can wire me to OpenAI, Azure, Copilot Studio, etc.";
+    if (t.includes("who are you"))          return "A self-contained HTML chatbot hosted on the web and shown inside Power BI via an iframe.";
+    if (t.includes("bye"))                  return "Bye! Refresh the visual anytime to chat again.";
+    return "You said: \"" + text + "\". (Test bot — swap getReply() for a real backend to get smart answers.)";
+  }
+
+  function botRespond(userText) {
+    typing.textContent = "Assistant is typing...";
+    setTimeout(() => {
+      typing.textContent = "";
+      addMsg(getReply(userText), "bot");
+    }, 500);
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    addMsg(text, "user");
+    input.value = "";
+    botRespond(text);
+  });
+
+  // greeting
+  addMsg("Hi! I'm a test chatbot. Type 'help' to see what I can do.", "bot");
+</script>
+</body>
+</html>
