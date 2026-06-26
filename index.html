@@ -7,46 +7,77 @@
 <style>
   * { box-sizing: border-box; }
   html, body {
-    margin: 0; height: 100%;
+    margin: 0; height: 100%; width: 100%;
     font-family: "Segoe UI", system-ui, Arial, sans-serif;
-    background: #f4f6fa;
+    background: transparent;          /* let the dashboard show through */
+    overflow: hidden;
   }
+
+  /* ---- floating launcher bubble (bottom-right) ---- */
+  .bubble {
+    position: fixed; right: 18px; bottom: 18px;
+    width: 60px; height: 60px; border-radius: 50%;
+    background: #e8590c; color: #fff;
+    border: none; cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,0,0,.28);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; z-index: 30;
+    transition: transform .15s ease;
+  }
+  .bubble:hover { transform: scale(1.06); }
+  .bubble svg { width: 28px; height: 28px; fill: #fff; }
+
+  /* ---- chat panel ---- */
   .chat {
-    display: flex; flex-direction: column;
-    height: 100vh; max-width: 100%;
-    background: #fff;
+    position: fixed; right: 18px; bottom: 18px;
+    width: 340px; max-width: calc(100vw - 36px);
+    height: 460px; max-height: calc(100vh - 36px);
+    display: none; flex-direction: column;
+    background: #fff; border-radius: 14px; overflow: hidden;
+    box-shadow: 0 10px 32px rgba(0,0,0,.30);
+    z-index: 40;
   }
+  .chat.open { display: flex; }
+
   .chat__header {
-    background: #0f9d58; color: #fff;
-    padding: 12px 16px; font-weight: 600; font-size: 15px;
+    background: #e8590c; color: #fff;
+    padding: 12px 14px; font-weight: 600; font-size: 15px;
     display: flex; align-items: center; gap: 8px; flex: 0 0 auto;
   }
   .chat__header .dot { width: 9px; height: 9px; border-radius: 50%; background: #3fd07a; }
-  .chat__log {
-    flex: 1 1 auto; overflow-y: auto;
-    padding: 14px; display: flex; flex-direction: column; gap: 10px;
+  .chat__header .title { flex: 1; }
+  .chat__close {
+    background: transparent; border: none; color: #fff;
+    font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px;
   }
-  .msg { max-width: 78%; padding: 9px 12px; border-radius: 14px; font-size: 14px; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; }
+  .chat__close:hover { opacity: .8; }
+
+  .chat__log { flex: 1 1 auto; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 80%; padding: 9px 12px; border-radius: 14px; font-size: 14px; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; }
   .msg--bot  { background: #eef1f6; color: #1c2330; align-self: flex-start; border-bottom-left-radius: 4px; }
-  .msg--user { background: #1f6feb; color: #fff;   align-self: flex-end;   border-bottom-right-radius: 4px; }
-  .chat__form {
-    display: flex; gap: 8px; padding: 10px; border-top: 1px solid #e3e7ee; flex: 0 0 auto;
-  }
-  .chat__input {
-    flex: 1; padding: 10px 12px; border: 1px solid #cbd2dd; border-radius: 10px; font-size: 14px; outline: none;
-  }
-  .chat__input:focus { border-color: #1f6feb; }
-  .chat__send {
-    border: none; background: #1f6feb; color: #fff; border-radius: 10px;
-    padding: 0 16px; font-size: 14px; font-weight: 600; cursor: pointer;
-  }
-  .chat__send:hover { background: #1858c0; }
+  .msg--user { background: #e8590c; color: #fff;   align-self: flex-end;   border-bottom-right-radius: 4px; }
+
   .typing { font-size: 12px; color: #8a93a3; padding: 0 14px 6px; height: 16px; }
+  .chat__form { display: flex; gap: 8px; padding: 10px; border-top: 1px solid #e3e7ee; flex: 0 0 auto; }
+  .chat__input { flex: 1; padding: 10px 12px; border: 1px solid #cbd2dd; border-radius: 10px; font-size: 14px; outline: none; }
+  .chat__input:focus { border-color: #e8590c; }
+  .chat__send { border: none; background: #e8590c; color: #fff; border-radius: 10px; padding: 0 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .chat__send:hover { background: #cf4f0a; }
 </style>
 </head>
 <body>
-  <div class="chat">
-    <div class="chat__header"><span class="dot"></span> Dashboard Assistant (test) &mdash; v2</div>
+  <!-- launcher -->
+  <button class="bubble" id="bubble" aria-label="Open chat" title="Chat">
+    <svg viewBox="0 0 24 24"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zM7 9h10v2H7V9zm0 4h7v2H7v-2z"/></svg>
+  </button>
+
+  <!-- panel -->
+  <div class="chat" id="chat">
+    <div class="chat__header">
+      <span class="dot"></span>
+      <span class="title">Dashboard Assistant (test) — v3</span>
+      <button class="chat__close" id="close" aria-label="Close chat" title="Close">&times;</button>
+    </div>
     <div class="chat__log" id="log"></div>
     <div class="typing" id="typing"></div>
     <div class="chat__form">
@@ -56,12 +87,29 @@
   </div>
 
 <script>
-  // ---- Simple rule-based test bot. Replace getReply() with a real API call later. ----
+  const bubble = document.getElementById("bubble");
+  const chat   = document.getElementById("chat");
+  const closeBtn = document.getElementById("close");
   const log = document.getElementById("log");
   const typing = document.getElementById("typing");
   const sendBtn = document.getElementById("send");
   const input = document.getElementById("input");
 
+  // ---- open / close ----
+  function openChat() {
+    chat.classList.add("open");
+    bubble.style.display = "none";
+    input.focus();
+    if (!log.hasChildNodes()) addMsg("Hi! I'm a test chatbot. Type 'help' to see what I can do.", "bot");
+  }
+  function closeChat() {
+    chat.classList.remove("open");
+    bubble.style.display = "flex";
+  }
+  bubble.addEventListener("click", openChat);
+  closeBtn.addEventListener("click", closeChat);
+
+  // ---- messaging ----
   function addMsg(text, who) {
     const el = document.createElement("div");
     el.className = "msg msg--" + who;
@@ -71,23 +119,21 @@
   }
 
   // Canned, keyword-based responses for testing only.
+  // Replace getReply() with a real backend call later (see the guide).
   function getReply(text) {
     const t = text.toLowerCase();
-    if (/\b(hi|hello|hey)\b/.test(t))      return "Hi! I'm a test bot embedded in your Power BI dashboard. Ask me about sales, help, or who I am.";
-    if (t.includes("sales"))               return "In the test version I don't read live data yet — but this is where a real answer about your sales numbers would appear.";
-    if (t.includes("help"))                return "Try: 'hello', 'what can you do', 'sales', or just type anything to see me echo a reply.";
-    if (t.includes("what can you do"))      return "I'm a placeholder chatbot proving the embed works. Later you can wire me to OpenAI, Azure, Copilot Studio, etc.";
-    if (t.includes("who are you"))          return "A self-contained HTML chatbot hosted on the web and shown inside Power BI via an iframe.";
-    if (t.includes("bye"))                  return "Bye! Refresh the visual anytime to chat again.";
+    if (/\b(hi|hello|hey)\b/.test(t))  return "Hi! I'm a test bot embedded in your Power BI dashboard. Ask me about sales, help, or who I am.";
+    if (t.includes("sales"))           return "In the test version I don't read live data yet — this is where a real answer about your sales numbers would appear.";
+    if (t.includes("help"))            return "Try: 'hello', 'what can you do', 'sales', or just type anything to see me reply.";
+    if (t.includes("what can you do")) return "I'm a placeholder chatbot proving the embed works. Later you can wire me to OpenAI, Azure, Copilot Studio, etc.";
+    if (t.includes("who are you"))     return "A self-contained HTML chatbot hosted on the web and shown inside Power BI via an iframe.";
+    if (t.includes("bye"))             return "Bye! Click the bubble anytime to chat again.";
     return "You said: \"" + text + "\". (Test bot — swap getReply() for a real backend to get smart answers.)";
   }
 
   function botRespond(userText) {
     typing.textContent = "Assistant is typing...";
-    setTimeout(() => {
-      typing.textContent = "";
-      addMsg(getReply(userText), "bot");
-    }, 500);
+    setTimeout(() => { typing.textContent = ""; addMsg(getReply(userText), "bot"); }, 500);
   }
 
   function send() {
@@ -100,14 +146,8 @@
   }
 
   sendBtn.addEventListener("click", send);
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") { e.preventDefault(); send(); }
-  });
-  // make sure the first click into the visual focuses the input
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); send(); } });
   input.addEventListener("click", () => input.focus());
-
-  // greeting
-  addMsg("Hi! I'm a test chatbot. Type 'help' to see what I can do.", "bot");
 </script>
 </body>
 </html>
